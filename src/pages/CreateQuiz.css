@@ -99,4 +99,60 @@
     cursor: pointer;
     margin-left: 10px;
   }
-  
+  /* Контейнер для списка викторин */
+.quiz-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+
+/* Элемент списка викторин (каждая викторина) */
+.quiz-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  padding: 10px 0;
+}
+
+/* Стиль для названия викторины */
+.quiz-entry span {
+  flex: 1;
+  padding-left: 15px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Кнопки для редактирования и удаления */
+.quiz-entry button {
+  padding: 8px 16px;
+  margin: 0 5px;
+  background-color: #000000;
+  border: 1px solid #000000;
+  cursor: pointer;
+  font-weight: 600;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+/* Эффект наведения для кнопок */
+.quiz-entry button:hover {
+  background-color: #ddd;
+}
+
+/* Стиль для кнопки "Удалить" */
+.quiz-entry button:last-child {
+  background-color: #ff4d4d;
+  color: white;
+}
+
+.quiz-entry button:last-child:hover {
+  background-color: #e60000;
+}
+
+/* Стиль для заголовка */
+h3 {
+  margin-top: 30px;
+  font-size: 20px;
+  color: #333;
+}

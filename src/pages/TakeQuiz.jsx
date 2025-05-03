@@ -1,157 +1,232 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import './TakeQuiz.css';
 
 const TakeQuiz = () => {
-  const [quizzes, setQuizzes] = useState([]);
-  const [currentQuiz, setCurrentQuiz] = useState(null);
-  const [answers, setAnswers] = useState({});
-  const [showResult, setShowResult] = useState(false);
-  const [result, setResult] = useState({ score: 0, total: 0, correct: 0, wrong: 0 });
+  const [quizzes] = useState(JSON.parse(localStorage.getItem('quizzes')) || []);
+  const [selectedQuizIndex, setSelectedQuizIndex] = useState(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [isFinished, setIsFinished] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const quizzesPerPage = 5;
 
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('quizzes')) || [];
-    setQuizzes(saved);
-  }, []);
-
-  const handleStartQuiz = (quiz) => {
-    setCurrentQuiz(quiz);
-    setAnswers({});
-    setShowResult(false);
+  const handleQuizSelect = (index) => {
+    setSelectedQuizIndex(index);
+    setAnswers(Array(quizzes[index].questions.length).fill(null));
   };
 
-  const handleAnswerChange = (questionIndex, value) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionIndex]: value,
-    }));
+  const filteredQuizzes = quizzes.filter(quiz => 
+    quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
+  );
+  
+  const totalPages = Math.ceil(filteredQuizzes.length / quizzesPerPage);
+  const indexOfLastQuiz = currentPage * quizzesPerPage;
+  const indexOfFirstQuiz = indexOfLastQuiz - quizzesPerPage;
+  const currentQuizzes = filteredQuizzes.slice(indexOfFirstQuiz, indexOfLastQuiz);
+
+  if (selectedQuizIndex === null) {
+    return (
+      <div className="quiz-list">
+        <input
+          type="text"
+          placeholder="Поиск по названию или тегу..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="search-input"
+        />
+        <h2>Выберите викторину</h2>
+        <div className="quiz-list-container">
+          {quizzes.length === 0 ? (
+            <p>Нет доступных викторин.</p>
+          ) : (
+            currentQuizzes.map((quiz, i) => (
+              <div
+                key={indexOfFirstQuiz + i}
+                className="quiz-card"
+                onClick={() => handleQuizSelect(quizzes.indexOf(quiz))}
+              >
+                <div className="quiz-header">
+                  <h3>{quiz.title}</h3>
+                  <span>{quiz.questions.length} вопросов</span>
+                </div>
+                <p className="quiz-description">{quiz.description}</p>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="pagination">
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i + 1)}
+              className={currentPage === i + 1 ? 'active' : ''}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+    );
+  }
+  
+  const quiz = quizzes[selectedQuizIndex];
+  const question = quiz.questions[currentQuestionIndex];
+
+  const handleAnswerChange = (value) => {
+    const updated = [...answers];
+    updated[currentQuestionIndex] = value;
+    setAnswers(updated);
+  };
+  
+
+  const handleFinish = () => {
+    setIsFinished(true);
+  
+    // Сохраняем результат в localStorage
+    const userStats = JSON.parse(localStorage.getItem('userStats')) || {
+      completedTests: [],
+      totalTestsTaken: 0,
+      totalCorrectAnswers: 0,
+    };
+  
+    const score = calculateScore();
+    const completedTest = {
+      title: quiz.title,
+      correctAnswers: score,
+      totalQuestions: quiz.questions.length,
+      date: new Date().toLocaleDateString(),
+    };
+  
+    userStats.completedTests.push(completedTest);
+    userStats.totalTestsTaken += 1;
+    userStats.totalCorrectAnswers += score;
+  
+    localStorage.setItem('userStats', JSON.stringify(userStats));
   };
 
-  const handleSubmit = () => {
+  const calculateScore = () => {
     let score = 0;
-    let correct = 0;
-    let wrong = 0;
-
-    currentQuiz.questions.forEach((q, i) => {
+    quiz.questions.forEach((q, i) => {
       const userAnswer = answers[i];
 
-      if (q.type === 'single') {
-        if (userAnswer === q.correctAnswer) {
+      if (q.type === 'text' && typeof userAnswer === 'string') {
+        if (userAnswer.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()) {
           score += q.points;
-          correct++;
-        } else {
-          wrong++;
         }
-      } else if (q.type === 'multiple') {
-        const correctSet = new Set(q.correctAnswer);
-        const userSet = new Set(userAnswer || []);
-        const isCorrect =
-          correctSet.size === userSet.size &&
-          [...correctSet].every((val) => userSet.has(val));
+      }
 
-        if (isCorrect) {
+      if (q.type === 'single' && userAnswer === q.correctAnswer) {
+        score += q.points;
+      }
+
+      if (q.type === 'multiple' && Array.isArray(userAnswer)) {
+        const correct = q.correctAnswer.sort().join(',');
+        const user = userAnswer.sort().join(',');
+        if (correct === user) {
           score += q.points;
-          correct++;
-        } else {
-          wrong++;
-        }
-      } else if (q.type === 'text') {
-        if (String(userAnswer).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()) {
-          score += q.points;
-          correct++;
-        } else {
-          wrong++;
         }
       }
     });
-
-    setResult({ score, total: currentQuiz.questions.length, correct, wrong });
-    setShowResult(true);
+    return score;
   };
 
-  if (!currentQuiz) {
+  if (isFinished) {
     return (
-      <div className="take-quiz">
-        <h2>Доступные викторины</h2>
-        {quizzes.length === 0 ? (
-          <p>Нет доступных тестов.</p>
-        ) : (
-          quizzes.map((quiz, index) => (
-            <div key={index} className="quiz-card">
-              <h3>{quiz.title}</h3>
-              <p>{quiz.description}</p>
-              <button onClick={() => handleStartQuiz(quiz)}>Пройти</button>
-            </div>
-          ))
-        )}
+      <div className="quiz-result">
+        <h2>Результаты</h2>
+        <p>Правильных ответов: {calculateScore()} из {quiz.questions.reduce((a, q) => a + q.points, 0)}</p>
+        <button onClick={() => {
+          setSelectedQuizIndex(null);
+          setCurrentQuestionIndex(0);
+          setAnswers([]);
+          setIsFinished(false);
+        }}>
+          Пройти другую викторину
+        </button>
       </div>
     );
   }
 
   return (
     <div className="take-quiz">
-      <h2>{currentQuiz.title}</h2>
-
-      {showResult ? (
-        <div className="results">
-          <h3>Результаты</h3>
-          <p>Правильных: {result.correct}</p>
-          <p>Неправильных: {result.wrong}</p>
-          <p>Общий счёт: {result.score}</p>
-          <button onClick={() => setCurrentQuiz(null)}>Назад к списку</button>
-        </div>
-      ) : (
-        <>
-          {currentQuiz.questions.map((q, i) => (
-            <div key={i} className="question-block">
-              <p><strong>{i + 1}. {q.text}</strong></p>
-
-              {q.type === 'single' &&
-                q.options.map((opt, idx) => (
-                  <label key={idx}>
-                    <input
-                      type="radio"
-                      name={`q-${i}`}
-                      value={idx}
-                      checked={answers[i] === idx}
-                      onChange={() => handleAnswerChange(i, idx)}
-                    />
-                    {opt}
-                  </label>
-                ))}
-
-              {q.type === 'multiple' &&
-                q.options.map((opt, idx) => (
-                  <label key={idx}>
-                    <input
-                      type="checkbox"
-                      checked={answers[i]?.includes(idx)}
-                      onChange={() => {
-                        const prev = answers[i] || [];
-                        const updated = prev.includes(idx)
-                          ? prev.filter((x) => x !== idx)
-                          : [...prev, idx];
-                        handleAnswerChange(i, updated);
-                      }}
-                    />
-                    {opt}
-                  </label>
-                ))}
-
-              {q.type === 'text' && (
-                <input
-                  type="text"
-                  value={answers[i] || ''}
-                  onChange={(e) => handleAnswerChange(i, e.target.value)}
-                />
-              )}
-            </div>
+      <div className="quiz-header">
+        <h2>{quiz.title}</h2>
+        <p>{quiz.description}</p>
+      </div>
+  
+      <div className="question-box">
+        <h3 className="question-text">Вопрос {currentQuestionIndex + 1} из {quiz.questions.length}</h3>
+        <p className="question-content">{question.text}</p>
+  
+        <div className="answer-options">
+          {question.type === 'single' && question.options.map((opt, i) => (
+            <label key={i} className="answer-option">
+              <input
+                type="radio"
+                name={`q-${currentQuestionIndex}`}
+                checked={answers[currentQuestionIndex] === i}
+                onChange={() => handleAnswerChange(i)}
+              />
+              <span>{opt}</span>
+            </label>
           ))}
-
-          <button onClick={handleSubmit}>Отправить</button>
-        </>
-      )}
+  
+          {question.type === 'multiple' && question.options.map((opt, i) => (
+            <label key={i} className="answer-option">
+              <input
+                type="checkbox"
+                checked={answers[currentQuestionIndex]?.includes(i) || false}
+                onChange={() => {
+                  let current = answers[currentQuestionIndex] || [];
+                  if (current.includes(i)) {
+                    current = current.filter(index => index !== i);
+                  } else {
+                    current = [...current, i];
+                  }
+                  handleAnswerChange(current);
+                }}
+              />
+              <span>{opt}</span>
+            </label>
+          ))}
+  
+          {question.type === 'text' && (
+            <input
+              type="text"
+              value={answers[currentQuestionIndex] || ''}
+              onChange={(e) => handleAnswerChange(e.target.value)}
+              placeholder="Введите ваш ответ..."
+              className="text-answer-input"
+            />
+          )}
+        </div>
+      </div>
+  
+      <div className="nav-buttons spaced">
+        <button
+          onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
+          disabled={currentQuestionIndex === 0}
+        >
+          ← Назад
+        </button>
+        {currentQuestionIndex < quiz.questions.length - 1 ? (
+          <button onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}>
+            Далее →
+          </button>
+        ) : (
+          <button onClick={handleFinish} style={{ backgroundColor: '#28a745' }}>
+            Завершить
+          </button>
+        )}
+      </div>
     </div>
-  );
+  );  
 };
 
 export default TakeQuiz;

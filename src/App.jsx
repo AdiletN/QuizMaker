@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import CreateQuiz from "./pages/CreateQuiz";
 import TakeQuiz from "./pages/TakeQuiz";
-import Results from "./pages/Results";
+import Profile from "./pages/Profile";
 import "./App.css"; // сюда мы вынесем стили
 
 function App() {
@@ -17,7 +17,7 @@ function App() {
             <Link to="/">Home</Link>
             <Link to="/create">Create Quiz</Link>
             <Link to="/quiz/:id">Take Quiz</Link>
-            <Link to="/results">Results</Link>
+            <Link to="/profile">Profile</Link>
           </div>
         </div>
       </nav>
@@ -27,7 +27,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/create" element={<CreateQuiz />} />
           <Route path="/quiz/:id" element={<TakeQuiz />} />
-          <Route path="/results" element={<Results />} />
+          <Route path="/profile" element={<Profile />} />
         </Routes>
       </div>
     </BrowserRouter>

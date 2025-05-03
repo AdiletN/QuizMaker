@@ -7,13 +7,18 @@ const CreateQuiz = () => {
   const [quizDescription, setQuizDescription] = useState('');
   const [questions, setQuestions] = useState([]);
   const [addingQuestions, setAddingQuestions] = useState(false);
-
+  const [isCreating, setIsCreating] = useState(false);
   const [questionText, setQuestionText] = useState('');
   const [questionType, setQuestionType] = useState('single');
   const [options, setOptions] = useState(['', '']);
   const [correctAnswer, setCorrectAnswer] = useState(null);
   const [correctTextAnswer, setCorrectTextAnswer] = useState('');
   const [points, setPoints] = useState(1);
+  const [tags, setTags] = useState('');
+  const [quizzes, setQuizzes] = useState(() => {
+    const saved = localStorage.getItem('quizzes');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const startQuizCreation = () => setQuizStarted(true);
 
@@ -68,6 +73,8 @@ const CreateQuiz = () => {
     setPoints(1);
   };
 
+  const handleTagsChange = (e) => setTags(e.target.value);
+
   const handleDeleteOption = (index) => {
     if (options.length === 2) {
       alert('Нельзя удалить вариант, так как должно быть хотя бы два варианта ответа.');
@@ -90,6 +97,8 @@ const CreateQuiz = () => {
   };
 
   const saveQuiz = () => {
+    const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+
     if (questions.length === 0) {
       alert('Добавьте хотя бы один вопрос перед сохранением викторины.');
       return;
@@ -99,10 +108,12 @@ const CreateQuiz = () => {
       title: quizTitle,
       description: quizDescription,
       questions,
+      tags: tagsArray,
     };
 
-    const existing = JSON.parse(localStorage.getItem('quizzes')) || [];
-    localStorage.setItem('quizzes', JSON.stringify([...existing, newQuiz]));
+    const updatedQuizzes = [...quizzes, newQuiz];
+    setQuizzes(updatedQuizzes);
+    localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
 
     alert('Quiz сохранён!');
     setQuizStarted(false);
@@ -110,12 +121,36 @@ const CreateQuiz = () => {
     setQuizTitle('');
     setQuizDescription('');
     setQuestions([]);
+    setTags('');
+  };
+
+  const handleDeleteQuiz = (index) => {
+    const updated = quizzes.filter((_, i) => i !== index);
+    setQuizzes(updated);
+    localStorage.setItem('quizzes', JSON.stringify(updated));
   };
 
   return (
     <div className="create-quiz">
       {!quizStarted ? (
-        <button onClick={startQuizCreation} className="start-btn">+ Create Quiz</button>
+        <>
+          <button onClick={startQuizCreation} className="start-btn">+ Create Quiz</button>
+
+          {quizzes.length > 0 && (
+            <>
+              <h3>Текущие викторины:</h3>
+              <div className="quiz-list">
+                {quizzes.map((quiz, index) => (
+                  <div key={index} className="quiz-entry">
+                    <span>{quiz.title}</span>
+                    <button onClick={() => alert('Редактирование пока не реализовано')}>Редактировать</button>
+                    <button onClick={() => handleDeleteQuiz(index)}>Удалить</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
       ) : !addingQuestions ? (
         <>
           <h2>Создание новой викторины</h2>
@@ -136,6 +171,15 @@ const CreateQuiz = () => {
               placeholder="Краткое описание теста..."
             />
           </div>
+          <div className="form-group">
+            <label>Теги (через запятую):</label>
+            <input
+              type="text"
+              value={tags}
+              onChange={handleTagsChange}
+              placeholder="Введите теги, разделённые запятой"
+            />
+          </div>
           <button
             onClick={() => {
               if (quizTitle.trim() === '') {
@@ -147,6 +191,7 @@ const CreateQuiz = () => {
           >
             Добавить вопросы
           </button>
+          <button onClick={() => setQuizStarted(false)} style={{ marginLeft: '10px' }}>Отмена</button>
         </>
       ) : (
         <>
