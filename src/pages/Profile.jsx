@@ -45,8 +45,7 @@ const Profile = () => {
     }
   
     return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-  };
-  
+  };  
 
   return (
     <div className="profile">

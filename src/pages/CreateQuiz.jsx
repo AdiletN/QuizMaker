@@ -15,6 +15,7 @@ const CreateQuiz = () => {
   const [correctTextAnswer, setCorrectTextAnswer] = useState('');
   const [points, setPoints] = useState(1);
   const [tags, setTags] = useState('');
+  
   const [quizzes, setQuizzes] = useState(() => {
     const saved = localStorage.getItem('quizzes');
     return saved ? JSON.parse(saved) : [];
@@ -111,7 +112,7 @@ const CreateQuiz = () => {
       tags: tagsArray,
     };
 
-    const updatedQuizzes = [...quizzes, newQuiz];
+    const updatedQuizzes = [newQuiz, ...quizzes];
     setQuizzes(updatedQuizzes);
     localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
 
