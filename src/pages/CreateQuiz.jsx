@@ -131,6 +131,20 @@ const CreateQuiz = () => {
     localStorage.setItem('quizzes', JSON.stringify(updated));
   };
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const quizzesPerPage = 5;
+
+  const filteredQuizzes = quizzes.filter(quiz =>
+    quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
+  );
+  
+  const totalPages = Math.ceil(filteredQuizzes.length / quizzesPerPage);
+  const indexOfLastQuiz = currentPage * quizzesPerPage;
+  const indexOfFirstQuiz = indexOfLastQuiz - quizzesPerPage;
+  const currentQuizzes = filteredQuizzes.slice(indexOfFirstQuiz, indexOfLastQuiz);
+
   return (
     <div className="create-quiz">
       {!quizStarted ? (
@@ -139,9 +153,19 @@ const CreateQuiz = () => {
 
           {quizzes.length > 0 && (
             <>
+              <input
+                type="text"
+                placeholder="Поиск по названию или тегу..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1); // При изменении поиска сбрасываем на первую страницу
+                }}
+                className="search-input"
+              />
               <h3>Текущие викторины:</h3>
               <div className="quiz-list">
-                {quizzes.map((quiz, index) => (
+                {currentQuizzes.map((quiz, index) => (
                   <div key={index} className="quiz-entry">
                     <span>{quiz.title}</span>
                     <button onClick={() => alert('Редактирование пока не реализовано')}>Редактировать</button>
@@ -149,11 +173,25 @@ const CreateQuiz = () => {
                   </div>
                 ))}
               </div>
+              <div className="pagination">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={currentPage === i + 1 ? 'active' : ''}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
             </>
           )}
         </>
       ) : !addingQuestions ? (
         <>
+          <div className="navigation-buttons">
+            <button onClick={() => setQuizStarted(false)} className="exit-btn">x</button>
+          </div>
           <h2>Создание новой викторины</h2>
           <div className="form-group">
             <label>Название викторины:</label>
@@ -192,10 +230,13 @@ const CreateQuiz = () => {
           >
             Добавить вопросы
           </button>
-          <button onClick={() => setQuizStarted(false)} style={{ marginLeft: '10px' }}>Отмена</button>
         </>
       ) : (
         <>
+          <div className="navigation-buttons">
+            <button onClick={() => setAddingQuestions(false)} className="back-btn">Back</button>
+            <button onClick={() => setQuizStarted(false)} className="exit-btn">x</button>
+          </div>
           <h2>Добавить вопрос</h2>
           <div className="form-group">
             <label>Текст вопроса:</label>
@@ -231,17 +272,20 @@ const CreateQuiz = () => {
                     type={questionType === 'single' ? 'radio' : 'checkbox'}
                     checked={
                       questionType === 'single'
-                        ? correctAnswer === i
-                        : correctAnswer?.includes(i)
+                        ? correctAnswer === i // Для радио-кнопки сравниваем с индексом
+                        : correctAnswer?.includes(i) // Для чекбоксов проверяем наличие индекса в массиве
                     }
                     onChange={() => {
                       if (questionType === 'single') {
+                        // Для одного правильного ответа устанавливаем индекс
                         setCorrectAnswer(i);
                       } else {
-                        const updated = correctAnswer?.includes(i)
-                          ? correctAnswer.filter((idx) => idx !== i)
-                          : [...(correctAnswer || []), i];
-                        setCorrectAnswer(updated);
+                        // Для нескольких правильных ответов добавляем или удаляем индекс из массива
+                        setCorrectAnswer((prev) =>
+                          prev?.includes(i)
+                            ? prev.filter((idx) => idx !== i) // Если уже выбран, удаляем
+                            : [...(prev || []), i] // Если не выбран, добавляем в массив
+                        );
                       }
                     }}
                   />
@@ -258,6 +302,7 @@ const CreateQuiz = () => {
               <button onClick={() => setOptions([...options, ''])}>+ Добавить вариант</button>
             </div>
           )}
+
 
           {questionType === 'text' && (
             <div className="form-group">
